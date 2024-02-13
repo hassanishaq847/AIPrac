@@ -28,6 +28,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".lips.LipsActivity"
+            android:exported="false">
+
+        </activity>
         <!-- Some devices, like the Pixel 6, may need to actively declare the use of native libs -->
         <uses-native-library
             android:name="libOpenCL.so"

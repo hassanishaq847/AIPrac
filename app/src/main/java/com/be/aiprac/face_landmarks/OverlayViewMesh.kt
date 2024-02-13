@@ -1,20 +1,5 @@
-package com.google.mediapipe.examples.facelandmarker
+package com.be.aiprac.face_landmarks
 
-/*
- * Copyright 2023 The TensorFlow Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *             http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -24,7 +9,6 @@ import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.be.aiprac.R
-import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
@@ -74,15 +58,6 @@ class OverlayViewMesh(context: Context?, attrs: AttributeSet?) :
 
         results?.let { faceLandmarkerResult ->
 
-//            if (faceLandmarkerResult.faceBlendshapes().isPresent) {
-//                faceLandmarkerResult.faceBlendshapes().get().forEach {
-//                    it.forEach {
-//                        Log.e(TAG, it.displayName() + " : " + it.score())
-//                    }
-//                }
-//            }
-
-
             for (landmark in faceLandmarkerResult.faceLandmarks()) {
                 for (normalizedLandmark in landmark) {
                     val x = normalizedLandmark.x() * imageWidth * scaleFactor
@@ -92,22 +67,22 @@ class OverlayViewMesh(context: Context?, attrs: AttributeSet?) :
                 }
             }
 
-            FaceLandmarker.FACE_LANDMARKS_CONNECTORS.forEach {
+            FaceLandmarker.FACE_LANDMARKS_LIPS.forEach {
+                Log.d(TAG, "FACE_LANDMARKS_LIPS: ${it.start()},${it.end()}")
                 canvas.drawLine(
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start())
+                    faceLandmarkerResult.faceLandmarks()[0][it!!.start()]
                         .x() * imageWidth * scaleFactor,
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it.start())
+                    faceLandmarkerResult.faceLandmarks()[0][it.start()]
                         .y() * imageHeight * scaleFactor,
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it.end())
+                    faceLandmarkerResult.faceLandmarks()[0][it.end()]
                         .x() * imageWidth * scaleFactor,
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it.end())
+                    faceLandmarkerResult.faceLandmarks()[0][it.end()]
                         .y() * imageHeight * scaleFactor,
                     linePaint
                 )
             }
         }
     }
-
 
 
     fun setResults(
@@ -135,7 +110,7 @@ class OverlayViewMesh(context: Context?, attrs: AttributeSet?) :
             }
         }
         Log.d(TAG, "setResults: $scaleFactor : $width,$height")
-        scaleFactor = 0.8f
+        scaleFactor = .5f
         invalidate()
     }
 

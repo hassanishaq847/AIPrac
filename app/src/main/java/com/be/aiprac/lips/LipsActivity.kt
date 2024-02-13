@@ -1,29 +1,27 @@
-package com.be.aiprac.face_landmarks
+package com.be.aiprac.lips
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.Point
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import com.be.aiprac.Constants
 import com.be.aiprac.R
 import com.be.aiprac.databinding.ActivityFaceMeshBinding
+import com.be.aiprac.face_landmarks.FaceLandmarkerHelper
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import java.util.LinkedList
-import java.util.Queue
 
-class FaceMeshActivity : AppCompatActivity() {
+class LipsActivity : AppCompatActivity() {
 
-    private val TAG: String = FaceMeshActivity::class.java.name
+    private val TAG: String = LipsActivity::class.java.name
     private lateinit var binding: ActivityFaceMeshBinding
     private lateinit var origBitmap: Bitmap
 
@@ -33,7 +31,7 @@ class FaceMeshActivity : AppCompatActivity() {
         binding = ActivityFaceMeshBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        origBitmap = BitmapFactory.decodeResource(resources, R.drawable.image3)
+        origBitmap = BitmapFactory.decodeResource(resources, R.drawable.image2)
         binding.ivMain.setImageBitmap(origBitmap)
         goForFaceLandMarks(origBitmap)
     }
@@ -52,39 +50,31 @@ class FaceMeshActivity : AppCompatActivity() {
 
         faceLandmarkerHelper.detectImage(bitmap)
             .let { resultBundle ->
-
                 resultBundle!!.result.let { faceLandmarkerResult ->
 
                     CoroutineScope(Dispatchers.IO).launch {
                         runBlocking {
                             val modifiedBitmap = origBitmap.copy(origBitmap.config, true)
 
+                            val list: ArrayList<Point> = ArrayList()
+                            Constants.arrayLipsMesh.forEach {
 
-                            val listUpper: ArrayList<Point> = ArrayList()
-                            val listLower: ArrayList<Point> = ArrayList()
-                            Constants.lipsUpper.forEach {
-                                val normalizedLandmark =
-                                    faceLandmarkerResult.faceLandmarks()[0][it]
+                                val normalizedLandmark = faceLandmarkerResult.faceLandmarks()[0][it]
+
                                 val x = normalizedLandmark.x() * origBitmap.width * 1f
                                 val y = normalizedLandmark.y() * origBitmap.height * 1f
-                                listUpper.add(Point(x.toInt(), y.toInt()))
+                                list.add(Point(x.toInt(), y.toInt()))
+//                                modifiedBitmap.setPixel(x.toInt(), y.toInt(), Color.BLACK)
+
                             }
 
+                            val pixelsList = getPixelsBetweenPoints(list)
+                            Log.d(TAG, "goForFaceLandMarks: ${pixelsList.size}")
 
-                            Constants.lipsLower.forEach {
-                                val normalizedLandmark =
-                                    faceLandmarkerResult.faceLandmarks()[0][it]
-                                val x = normalizedLandmark.x() * origBitmap.width * 1f
-                                val y = normalizedLandmark.y() * origBitmap.height * 1f
-                                listLower.add(Point(x.toInt(), y.toInt()))
+                            fillPolygonLips(modifiedBitmap, pixelsList, Color.RED, 0.6f, 1f)
+                            pixelsList.forEach {
+                                modifiedBitmap.setPixel(it.x, it.y, Color.BLACK)
                             }
-
-                            val pixelsListUpper = getPixelsBetweenPoints(listUpper)
-                            val pixelsListLower = getPixelsBetweenPoints(listLower)
-//                            Log.d(TAG, "goForFaceLandMarks: ${pixelsList.size}")
-
-                            fillPolygonLips(modifiedBitmap, pixelsListUpper, Color.RED, 0.5f, 1.0f)
-                            fillPolygonLips(modifiedBitmap, pixelsListLower, Color.RED, 0.5f, 1.0f)
 
 
                             withContext(Dispatchers.Main) {
@@ -196,7 +186,8 @@ class FaceMeshActivity : AppCompatActivity() {
         return featheredColor
     }
 
-    private fun getPixelsBetweenPoints(points: List<Point>): List<Point> {
+
+    fun getPixelsBetweenPoints(points: List<Point>): List<Point> {
         val pixels = mutableListOf<Point>()
 
         for (i in 0 until points.size - 1) {
@@ -248,89 +239,4 @@ class FaceMeshActivity : AppCompatActivity() {
         return pixels
     }
 
-////////////////////////////////////////////
-
-    class LipFiller(
-        private val lipBoundaryPoints: Set<Point>
-    ) {
-
-        fun fillLipsRegion(bitmap: Bitmap): List<Point> {
-            val resultPixels = mutableListOf<Point>()
-
-            // Create a mutable bitmap to perform the flood-fill operation
-            val mutableBitmap = Bitmap.createBitmap(bitmap)
-            val canvas = Canvas(mutableBitmap)
-
-            val paint = Paint()
-            paint.color =
-                Color.RED // You can set any color, it won't be visible in the final result
-
-            for (point in lipBoundaryPoints) {
-                // Draw the lip boundary on the canvas
-                canvas.drawPoint(point.x.toFloat(), point.y.toFloat(), paint)
-            }
-
-            val width = mutableBitmap.width
-            val height = mutableBitmap.height
-            val visited = Array(width) { BooleanArray(height) }
-
-            for (x in 0 until width) {
-                for (y in 0 until height) {
-                    if (!visited[x][y] && isPointInsideLips(x, y, mutableBitmap)) {
-                        // Perform flood-fill from the current point
-                        val filledRegion = floodFill(x, y, mutableBitmap, visited)
-                        resultPixels.addAll(filledRegion)
-                    }
-                }
-            }
-
-            return resultPixels
-        }
-
-        private fun isPointInsideLips(x: Int, y: Int, bitmap: Bitmap): Boolean {
-            return if (x < 0 || x >= bitmap.width || y < 0 || y >= bitmap.height) {
-                false
-            } else {
-                // Check if the pixel at the specified coordinates is not transparent
-                bitmap.getPixel(x, y) != Color.TRANSPARENT
-            }
-        }
-
-        private fun floodFill(
-            x: Int,
-            y: Int,
-            bitmap: Bitmap,
-            visited: Array<BooleanArray>
-        ): List<Point> {
-            val resultPixels = mutableListOf<Point>()
-            val queue: Queue<Point> = LinkedList()
-            queue.add(Point(x, y))
-
-            val targetColor = bitmap.getPixel(x, y)
-
-            while (queue.isNotEmpty()) {
-                val current = queue.poll()
-
-                if (current!!.x < 0 || current.x >= bitmap.width || current.y < 0 || current.y >= bitmap.height ||
-                    visited[current.x][current.y] || bitmap.getPixel(
-                        current.x,
-                        current.y
-                    ) != targetColor
-                ) {
-                    continue
-                }
-
-                visited[current.x][current.y] = true
-                resultPixels.add(Point(current.x, current.y))
-
-                // Add neighboring pixels to the queue
-                queue.add(Point(current.x + 1, current.y))
-                queue.add(Point(current.x - 1, current.y))
-                queue.add(Point(current.x, current.y + 1))
-                queue.add(Point(current.x, current.y - 1))
-            }
-
-            return resultPixels
-        }
-    }
 }

@@ -20,6 +20,24 @@ android {
 
     buildTypes {
         release {
+
+            ndk {
+                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            }
+
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+
+        debug {
+
+            ndk {
+                abiFilters += listOf("armeabi-v7a", "arm64-v8a", "armeabi")
+            }
+
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -41,7 +59,7 @@ android {
 }
 
 // Downloads the TFLite and Task files used for plugins
-project.ext.set("ASSET_DIR", projectDir.toString() + "/src/main/assets")
+project.ext.set("ASSET_DIR", "$projectDir/src/main/assets")
 apply(from = "download_tasks.gradle")
 
 dependencies {
@@ -55,7 +73,8 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 
-    implementation("com.google.mediapipe:tasks-vision:0.20230731")
+//    implementation("com.google.mediapipe:tasks-vision:0.20230731")
+    implementation("com.google.mediapipe:tasks-vision:0.10.9")
 //    implementation("com.google.mediapipe:tasks-vision-image-generator:0.10.5.2")
 
     val camerax_version = "1.4.0-alpha02"
